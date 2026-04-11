@@ -1,0 +1,128 @@
+{
+  "aws": {
+    "region": "ap-south-1",
+    "account_id": "036215883001"
+  },
+
+  "s3": {
+    "bucket": "my-glue-pipeline-swapnil-2026",
+    "layers": {
+      "raw":           "s3://my-glue-pipeline-swapnil-2026/raw/public",
+      "staging_dedup": "s3://my-glue-pipeline-swapnil-2026/staging/deduplicated",
+      "staging_masked":"s3://my-glue-pipeline-swapnil-2026/staging/masked",
+      "processed":     "s3://my-glue-pipeline-swapnil-2026/processed",
+      "iceberg":       "s3://my-glue-pipeline-swapnil-2026/iceberg",
+      "error":         "s3://my-glue-pipeline-swapnil-2026/error",
+      "logs":          "s3://my-glue-pipeline-swapnil-2026/logs"
+    }
+  },
+
+  "tables": {
+    "customer": {
+      "primary_key":  "customer_id",
+      "sort_column":  "customer_id",
+      "pii_columns":  ["first_name", "last_name", "email", "phone"]
+    },
+    "address": {
+      "primary_key":  "address_id",
+      "sort_column":  "address_id",
+      "pii_columns":  ["street_address"]
+    },
+    "orders": {
+      "primary_key":  "order_id",
+      "sort_column":  "order_date",
+      "pii_columns":  []
+    },
+    "payments": {
+      "primary_key":  "payment_id",
+      "sort_column":  "payment_date",
+      "pii_columns":  []
+    }
+  },
+
+  "pii": {
+    "masking_rules": {
+      "first_name":     "partial",
+      "last_name":      "partial",
+      "email":          "partial",
+      "phone":          "partial",
+      "street_address": "partial"
+    },
+    "hash_columns": ["email"]
+  },
+
+  "validation": {
+    "email_columns": ["email"],
+    "phone_columns": ["phone"],
+    "numeric_ranges": {
+      "order_amount": {"min": 0, "max": 1000000},
+      "amount":       {"min": 0, "max": 1000000}
+    },
+    "date_columns": ["order_date", "payment_date"]
+  },
+
+  "dq": {
+    "pass_threshold": 90
+  },
+
+  "etl": {
+    "date_format":   "yyyy-MM-dd",
+    "join_key":      "customer_id",
+    "drop_columns":  []
+  },
+
+  "iceberg": {
+    "database":  "glue_iceberg_db",
+    "warehouse": "s3://my-glue-pipeline-swapnil-2026/iceberg",
+    "tables": {
+      "customer": {
+        "table_name":   "iceberg_customer",
+        "partition_by": "customer_id",
+        "columns": [
+          "customer_id", "customer_first_name", "customer_last_name",
+          "customer_email", "customer_phone", "email_hashed"
+        ]
+      },
+      "address": {
+        "table_name":   "iceberg_address",
+        "partition_by": "customer_id",
+        "columns": [
+          "customer_id", "customer_street", "customer_city",
+          "customer_state", "customer_zip"
+        ]
+      },
+      "orders": {
+        "table_name":   "iceberg_orders",
+        "partition_by": "order_date",
+        "columns": [
+          "order_id", "customer_id", "order_date",
+          "order_amount", "order_status", "total_amount"
+        ]
+      },
+      "payments": {
+        "table_name":   "iceberg_payments",
+        "partition_by": "payment_date",
+        "columns": [
+          "payment_id", "order_id", "payment_date",
+          "amount", "payment_method"
+        ]
+      }
+    }
+  },
+
+  "glue": {
+    "job_names": {
+      "profiling":    "job_1_profiling",
+      "dedup":        "job_2_deduplication",
+      "masking":      "job_3_pii_masking",
+      "etl":          "job_4_etl",
+      "dq":           "job_5_dq_check",
+      "iceberg_load": "job_6_iceberg_load"
+    },
+    "iam_role":      "arn:aws:iam::036215883001:role/dms-s3-access-role",
+    "glue_version":  "4.0",
+    "python_version":"3",
+    "worker_type":   "G.1X",
+    "num_workers":   2
+  }
+}

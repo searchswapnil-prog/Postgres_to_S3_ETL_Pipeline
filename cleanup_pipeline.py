@@ -30,13 +30,32 @@ def cleanup():
     cfg_rds = config["rds"]
     bucket_name = config["s3"]["bucket"]
 
-    # 1. Delete DMS Task
-    log("STEP 1 — Deleting DMS Task")
+    # 1. STOP and DELETE DMS Task
+    log("STEP 1 — Deleting DMS Task (and waiting)")
     try:
         tasks = dms.describe_replication_tasks(Filters=[{"Name": "replication-task-id", "Values": [cfg_dms["task_id"]]}])["ReplicationTasks"]
-        if tasks:
-            task_arn = tasks[0]["ReplicationTaskArn"]
+        for task in tasks:
+            task_arn = task["ReplicationTaskArn"]
+            if task["Status"] in ["running", "starting", "failed"]:
+                log("  Task is active/failed. Stopping...")
+                try: dms.stop_replication_task(ReplicationTaskArn=task_arn)
+                except Exception: pass
+                while True:
+                    t = dms.describe_replication_tasks(Filters=[{"Name": "replication-task-arn", "Values": [task_arn]}])["ReplicationTasks"][0]
+                    if t["Status"] == "stopped": break
+                    log("  Waiting for task to stop...")
+                    time.sleep(10)
+            
+            log("  Deleting task...")
             dms.delete_replication_task(ReplicationTaskArn=task_arn)
+            while True:
+                try:
+                    t = dms.describe_replication_tasks(Filters=[{"Name": "replication-task-arn", "Values": [task_arn]}])["ReplicationTasks"]
+                    if not t: break
+                    log("  Waiting for task to be deleted...")
+                    time.sleep(10)
+                except Exception:
+                    break
             log("  DMS Task deleted.")
     except Exception as e:
         log(f"  Skipped DMS Task: {str(e)}")
@@ -56,10 +75,19 @@ def cleanup():
     log("STEP 3 — Deleting DMS Replication Instance")
     try:
         instances = dms.describe_replication_instances(Filters=[{"Name": "replication-instance-id", "Values": [cfg_dms["replication_instance_id"]]}])["ReplicationInstances"]
-        if instances:
-            instance_arn = instances[0]["ReplicationInstanceArn"]
+        for inst in instances:
+            instance_arn = inst["ReplicationInstanceArn"]
             dms.delete_replication_instance(ReplicationInstanceArn=instance_arn)
-            log("  DMS Replication Instance deletion started.")
+            log("  DMS Replication Instance deletion started. Waiting...")
+            while True:
+                try:
+                    i = dms.describe_replication_instances(Filters=[{"Name": "replication-instance-arn", "Values": [instance_arn]}])["ReplicationInstances"]
+                    if not i: break
+                    log("  Waiting for instance to be deleted...")
+                    time.sleep(15)
+                except Exception:
+                    break
+            log("  Replication Instance deleted.")
     except Exception as e:
         log(f"  Skipped Replication Instance: {str(e)}")
 
@@ -70,7 +98,10 @@ def cleanup():
             DBInstanceIdentifier=cfg_rds["identifier"],
             SkipFinalSnapshot=True # Skips creating a new snapshot to save money
         )
-        log("  RDS Database deletion started.")
+        log("  RDS Database deletion started. Waiting (this can take a few minutes)...")
+        waiter = rds.get_waiter('db_instance_deleted')
+        waiter.wait(DBInstanceIdentifier=cfg_rds["identifier"], WaiterConfig={'Delay': 30, 'MaxAttempts': 60})
+        log("  RDS Database deleted.")
     except Exception as e:
         log(f"  Skipped RDS Database: {str(e)}")
 

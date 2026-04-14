@@ -1,0 +1,15 @@
+{
+  "dms": {
+    "replication_instance_id": "dms-repl-instance",
+    "instance_class": "dms.t3.small",
+    "allocated_storage": 50,
+    "public_access": true,
+    "multi_az": false,
+    "task_id": "dms-postgres-to-s3-task"
+  },
+  "endpoints": {
+    "source_id": "postgres-source-endpoint",
+    "target_id": "s3-target-endpoint",
+    "plugin": "pgoutput"
+  }
+}

@@ -1,0 +1,56 @@
+workflow_name: "etl-pipeline-v2.0"
+description: "Automated ETL Pipeline v2.0"
+
+jobs:
+  - job_1_profiling
+  - job_2_deduplication
+  - job_3_pii_masking
+  - job_4_etl
+  - job_5_dq_check
+  - job_6_iceberg_load
+
+triggers:
+  - name: "start-trigger"
+    type: "ON_DEMAND"
+    actions:
+      - "job_1_profiling"
+
+  - name: "trigger-2"
+    type: "CONDITIONAL"
+    conditions:
+      - job_name: "job_1_profiling"
+        state: "SUCCEEDED"
+    actions:
+      - "job_2_deduplication"
+
+  - name: "trigger-3"
+    type: "CONDITIONAL"
+    conditions:
+      - job_name: "job_2_deduplication"
+        state: "SUCCEEDED"
+    actions:
+      - "job_3_pii_masking"
+
+  - name: "trigger-4"
+    type: "CONDITIONAL"
+    conditions:
+      - job_name: "job_3_pii_masking"
+        state: "SUCCEEDED"
+    actions:
+      - "job_4_etl"
+
+  - name: "trigger-5"
+    type: "CONDITIONAL"
+    conditions:
+      - job_name: "job_4_etl"
+        state: "SUCCEEDED"
+    actions:
+      - "job_5_dq_check"
+
+  - name: "trigger-6"
+    type: "CONDITIONAL"
+    conditions:
+      - job_name: "job_5_dq_check"
+        state: "SUCCEEDED"
+    actions:
+      - "job_6_iceberg_load"

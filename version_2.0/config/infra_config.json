@@ -1,0 +1,31 @@
+{
+  "aws": {
+    "region": "ap-south-1",
+    "account_id": "036215883001"
+  },
+  "secrets": {
+    "db_secret_name": "pipeline-db-credentials-v1"
+  },
+  "rds": {
+    "identifier": "postgres-to-s3-db",
+    "database": "postgres_to_s3_db",
+    "username": "postgres",
+    "instance_class": "db.t4g.micro",
+    "allocated_storage": 50,
+    "engine_version": "16.10"
+  },
+  "s3": {
+    "bucket": "my-glue-pipeline-swapnil-2026",
+    "prefix": "raw",
+    "compression": "gzip",
+    "format": "parquet",
+    "date_partition": true
+  "network": {
+    "vpc_id": "vpc-0463c5ecab526dafe",
+    "subnet_group": "default-vpc-0463c5ecab526dafe",
+    "security_group_id": "sg-07b5d6dcf6434c7c5"
+  },
+  "iam": {
+    "role_name": "dms-s3-access-role"
+  }
+}

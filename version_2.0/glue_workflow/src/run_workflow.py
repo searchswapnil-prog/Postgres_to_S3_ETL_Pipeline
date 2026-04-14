@@ -22,8 +22,18 @@ def run_workflow():
     workflow_name = config["workflow_name"]
 
     print(f"Starting workflow: {workflow_name}")
-    response = glue.start_workflow_run(Name=workflow_name)
-    print(f"Workflow Run ID: {response['RunId']}")
+    try:
+        response = glue.start_workflow_run(Name=workflow_name)
+        run_id   = response["RunId"]
+    except glue.exceptions.InvalidInputException:
+        # Fallback for AWS API delay recognizing the trigger
+        trigger_name = f"{workflow_name}-start-trigger"
+        glue.start_trigger(Name=trigger_name)
+        time.sleep(3)
+        runs   = glue.get_workflow_runs(Name=workflow_name).get("Runs", [])
+        run_id = runs[0]["RunId"] if runs else "Unknown"
+
+    print(f"Workflow Run ID: {run_id}")
 
 if __name__ == "__main__":
     run_workflow()

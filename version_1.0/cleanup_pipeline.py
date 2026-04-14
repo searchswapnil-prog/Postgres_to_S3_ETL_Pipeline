@@ -19,7 +19,7 @@ s3_resource = boto3.resource("s3", region_name=region)
 s3_client = boto3.client("s3", region_name=region)
 
 def log(msg):
-    print(f"[{time.strftime('%H:%M:%S')}] {msg}")
+      print(f"[{time.strftime('%H:%M:%S')}] {msg}")
 
 def cleanup():
     print("\n" + "=" * 55)

@@ -20,6 +20,7 @@
     "compression": "gzip",
     "format": "parquet",
     "date_partition": true
+  },
   "network": {
     "vpc_id": "vpc-0463c5ecab526dafe",
     "subnet_group": "default-vpc-0463c5ecab526dafe",

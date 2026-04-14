@@ -143,7 +143,7 @@ def create_source_endpoint(db_password: str, db_endpoint: str):
 def create_target_endpoint():
     log("STEP 6 — Setting up target endpoint (S3)")
     s3_cfg = config["s3"]
-    ep     = config["endpoints"]
+    ep     = dms_config["endpoints"]
 
     if _safe_describe_endpoints(ep["target_id"]):
         log("  Target endpoint exists — skipping")
@@ -291,7 +291,20 @@ def reload_dms_task():
     status   = tasks[0]["Status"]
     log(f"  Current task status: {status}")
 
-    if status in ("running", "starting"):
+    if status == "starting":
+        log("  Task is starting. Waiting for it to reach 'running' state before stopping...")
+        while True:
+            time.sleep(10)
+            tasks  = _safe_describe_tasks(cfg["task_id"])
+            status = tasks[0]["Status"]
+            if status == "running":
+                break
+            elif status in ("stopped", "failed", "ready"):
+                log(f"  Task reached {status} instead of running.")
+                break
+            log(f"  Waiting for task to run (current: {status})...")
+
+    if status == "running":
         log("  Stopping task before reload...")
         dms.stop_replication_task(ReplicationTaskArn=task_arn)
         while True:
